@@ -1,10 +1,9 @@
 package PDFDiffFX;
 
 import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
+import javafx.scene.control.*;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseEvent;
@@ -18,7 +17,14 @@ import java.io.File;
 public class Controller implements Initializable {
 
     public StackPane layout;
+    public CheckBox checkboxCopySummary;
+    public CheckBox checkBoxReportVisual;
+    public CheckBox checkBoxReportText;
+    public Label labelReports;
+    public Label labelInstructions;
+    public Label labelOutPath;
 
+    @FXML
     private void dragOverHandler(DragEvent e) {
         if (e.getGestureSource() != layout && e.getDragboard().hasFiles()) {
             e.acceptTransferModes(TransferMode.COPY_OR_MOVE);
@@ -45,6 +51,7 @@ public class Controller implements Initializable {
         e.consume();
     }
 
+    @FXML
     private void generateReport() {
 
     }
@@ -63,6 +70,10 @@ public class Controller implements Initializable {
         paneFile2.setOnDragOver(this::dragOverHandler);
         paneFile1.setOnDragDropped(e -> dragDroppedHandler(e, "file1"));
         paneFile2.setOnDragDropped(e -> dragDroppedHandler(e, "file2"));
+
+        // make a file explorer/chooser for output path
+
+        // display modal with report summary
 
     }
 }

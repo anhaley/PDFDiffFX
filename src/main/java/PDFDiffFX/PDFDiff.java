@@ -58,15 +58,12 @@ public class PDFDiff {
     }
 
     private static ArrayList<BufferedImage> pdfToImages(PDDocument pdDocument/*, String folderPath*/) {
-//        ArrayList<File> imageFiles = new ArrayList<>();
         ArrayList<BufferedImage> images = new ArrayList<>();
         try {
             PDFRenderer pdfRenderer = new PDFRenderer(pdDocument);
             for (int i = 0; i < pdDocument.getNumberOfPages(); i++) {
 //                BufferedImage bImage = pdfRenderer.renderImage(i);
                 images.add(pdfRenderer.renderImage(i));
-//                ImageIOUtil.writeImage(bImage, folderPath + String.format("/page%d.jpg", i), 300);
-                // should either delete these files or not write them out, i.e. return the BufferedImages instead
             }
 //            imageFiles.add(new File(folderPath + "\\template_image.jpg"));
         } catch (IOException e){
@@ -211,16 +208,6 @@ public class PDFDiff {
                 }
 
                 // if some flag, compare graphically
-//                PDDocument composite = compareImageLists(pdfToImages(doc1), pdfToImages(doc2));
-//                if (composite == null) {
-//                    System.out.println("Error encountered while building graphical diff.");
-//                } else {
-//                    composite.save(outFile + ".pdf");
-//                }
-
-//                final CompareResult result = new PdfComparator(fileName1, fileName2).compare();
-//                result.writeTo("results/t2");
-//                Collection<PageArea> diffAreas = new ArrayList<>();
 
                 // cleaned-up version, highlights differences, more readable
                 LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(file1Text, file2Text);
