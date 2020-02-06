@@ -30,31 +30,30 @@ public class PDFDiff {
                    );
     }
 
-    private static boolean printReport(LinkedList<diff_match_patch.Diff> diff_list, PrintStream out) {
+    private static String printReport(LinkedList<diff_match_patch.Diff> diff_list) {
         LinkedList<diff_match_patch.Diff> diff = new LinkedList<>(diff_list);
-        out.println("Analysis complete.");
+        StringBuilder result = new StringBuilder();
         if (diff.isEmpty()) {
-            out.println("Documents identical.");
-            return true;
+            result.append("Documents identical.\n");
         } else {
             // this regex filters out matches that are just whitespace, including carriage returns and non-breaking spaces,
             // as well as the bulk of the list, which contains entries that are the same in both documents
             diff.removeIf(d -> d.operation == diff_match_patch.Operation.EQUAL || d.text.matches("[\\s\r\\u00A0\\u2003]+"));
             if (diff.isEmpty()) {
-                out.println("Differences found, but only in whitespace and/or non-printing characters.");
+                result.append("Differences found, but only in whitespace and/or non-printing characters.\n");
             } else {
-                out.println("Differences identified.");
+                result.append("Differences identified.\n");
                 int i = 0;
                 for (diff_match_patch.Diff d : diff) {
-                    printDiff(d, ++i, out);
+                    result.append(formatDiff(d, ++i));
                 }
             }
-            return false;
         }
+        return result.toString();
     }
 
-    private static void printDiff(diff_match_patch.Diff d, int index, PrintStream out) {
-        out.println( String.format( "#%d: %s, \"%s\"", index, d.operation, d.text.trim() ) );
+    private static String formatDiff(diff_match_patch.Diff d, int index) {
+        return String.format( "#%d: %s, \"%s\"\n", index, d.operation, d.text.trim() );
     }
 
     private static ArrayList<BufferedImage> pdfToImages(PDDocument pdDocument/*, String folderPath*/) {
@@ -65,46 +64,15 @@ public class PDFDiff {
 //                BufferedImage bImage = pdfRenderer.renderImage(i);
                 images.add(pdfRenderer.renderImage(i));
             }
-//            imageFiles.add(new File(folderPath + "\\template_image.jpg"));
         } catch (IOException e){
             System.out.println("Error encountered during rendering of PDF to images.");
             e.printStackTrace();
             return null;
         }
 
-//        return imageFiles;
         return images;
     }
 
-    private static boolean compareImage(BufferedImage img1, BufferedImage img2, ArrayList<BufferedImage> resultList) {
-        boolean identical = true;
-        int height = img1.getHeight();
-        int width = img1.getWidth();
-        BufferedImage composite = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                try {
-                    int pixel1 = img1.getRGB(x, y);
-                    int pixel2 = img2.getRGB(x, y);
-                    if (pixel1 == pixel2) {
-                        composite.setRGB(x, y, pixel1);
-                    } else {
-                        identical = false;
-                        int a = 0xff & pixel1 >> 24;
-                        int r = 0xff & pixel1 >> 16;
-                        int g = 0xff & pixel1 >> 8;
-                        int b = 0xff & pixel1;
-                        int pixelMod = a << 24 | r << 16 | g << 8 | b;
-                        composite.setRGB(x, y, pixelMod);
-                    }
-                } catch (Exception _e) {
-                    composite.setRGB(x, y, 0x80ff0000);
-                }
-            }
-        }
-        resultList.add(composite);
-        return identical;
-    }
 
     private static PDDocument compareImageLists(ArrayList<BufferedImage> doc1, ArrayList<BufferedImage> doc2) {
         if (doc1 == null || doc2 == null) {
@@ -145,6 +113,10 @@ public class PDFDiff {
         }
         reportDifferentPages(differentPages);
         return pdfOut;
+    }
+
+    private static boolean compareImage(BufferedImage bufferedImage1, BufferedImage bufferedImage2, ArrayList<BufferedImage> composites) {
+        return false;
     }
 
     private static void reportDifferentPages(ArrayList<Integer> diffs) {
@@ -212,12 +184,16 @@ public class PDFDiff {
                 // cleaned-up version, highlights differences, more readable
                 LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(file1Text, file2Text);
                 dmp.diff_cleanupSemantic(semDiff);
-                printReport(semDiff, System.out);
+                AlertBox.display( "Summary Report", printReport(semDiff) );
                 if (dump) {
-                    System.out.println("Copying this report to " + outFile + "_summary.txt.");
-                    printReport( semDiff, new PrintStream( new File( outFile+"_summary.txt") ) );
+                    String summaryFile = outFile + "_summary.txt.";
+                    try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
+                        System.out.println("Copying this report to " + summaryFile);
+                        pw.println(printReport(semDiff));
+                    } catch (IOException _e) {
+                        AlertBox.display("Error writing to file", "Could not open file for writing copy of summary report.");
+                    }
                 }
-
             }
         } catch (IOException _ioe) {
             System.out.println("Could not open files");

@@ -54,7 +54,7 @@
                         <Insets bottom="5.0" />
                     </padding>
                 </Label>
-                <CheckBox fx:id="checkBoxReportText" mnemonicParsing="false" selected="true" text="Text" />
+                <CheckBox fx:id="checkBoxReportText" disable="true" mnemonicParsing="false" selected="true" text="Text" />
                 <CheckBox fx:id="checkBoxReportVisual" mnemonicParsing="false" text="Visual" />
             </children>
             <opaqueInsets>

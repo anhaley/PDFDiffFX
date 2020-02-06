@@ -30,8 +30,6 @@ public class Controller implements Initializable {
 
     private String pathFile1;
     private String pathFile2;
-    private boolean dumpFlag;
-    private String pathOut;
 
     @FXML
     private void dragOverHandler(DragEvent e) {
@@ -79,10 +77,9 @@ public class Controller implements Initializable {
             return;
         }
         // get text out path
-        pathOut = textOutPath.getText();
+        String pathOut = textOutPath.getText();
         // get -d flag
-        dumpFlag = checkBoxCopySummary.isSelected();
-        String dumpArg = dumpFlag ? "-d" : null;
+        String dumpArg = checkBoxCopySummary.isSelected() ? "-d" : null;
         PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut, dumpArg});
 
     }

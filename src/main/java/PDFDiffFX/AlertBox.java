@@ -13,14 +13,11 @@ public class AlertBox {
     public static void display(String title, String msg) {
         Stage window = new Stage();
 
-        window.initModality(Modality.APPLICATION_MODAL); //
+        window.initModality(Modality.APPLICATION_MODAL);
         window.setTitle(title);
         window.setMinWidth(350);
 
         Label label = new Label(msg);
-
-//        Button closeButton = new Button("Close");
-//        closeButton.setOnAction( e -> window.close() );
 
         VBox layout = new VBox(10);
         layout.setPadding(new Insets(10,10,10,10));
