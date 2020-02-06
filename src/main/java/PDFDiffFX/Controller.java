@@ -45,6 +45,10 @@ public class Controller implements Initializable {
         e.consume();
     }
 
+    private void generateReport() {
+
+    }
+
     public Button buttonGenerate;
     public TextField textOutPath;
     public TitledPane paneFile1;

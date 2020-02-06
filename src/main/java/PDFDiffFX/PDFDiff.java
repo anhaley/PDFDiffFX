@@ -186,11 +186,6 @@ public class PDFDiff {
         String fileName2 = argList.get(1);
         String outFile = argList.get(2);
 
-//        try (PDDocument doc1 = PDDocument.load(file1)) {
-//            String folderPath = fileName1.substring(0, fileName1.indexOf("0"));
-//            pdfToImages(doc1, folderPath);
-//        }
-
         // open documents
         File file1 = new File(fileName1);
         try (PDDocument doc1 = PDDocument.load(file1)) {
