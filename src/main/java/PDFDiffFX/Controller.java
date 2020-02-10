@@ -3,14 +3,15 @@ package PDFDiffFX;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.StackPane;
 
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.ResourceBundle;
 import java.io.File;
 
@@ -24,9 +25,13 @@ public class Controller implements Initializable {
     public Label labelInstructions;
     public Label labelOutPath;
     public Button buttonGenerate;
-    public TextField textOutPath;
+    public TextField textOutDir;
+    public TextField textOutName;
     public TitledPane paneFile1;
     public TitledPane paneFile2;
+    public Button btnOutDir;
+    public ImageView imgFile1;
+    public ImageView imgFile2;
 
     private String pathFile1;
     private String pathFile2;
@@ -44,14 +49,29 @@ public class Controller implements Initializable {
         e.acceptTransferModes(TransferMode.COPY_OR_MOVE);
         boolean success;
         if ( (success = db.hasFiles() ) ) {
-            if (file.equals("file1")) {
-                pathFile1 = db.getFiles().toString();
-                pathFile1 = pathFile1.substring(1, pathFile1.length()-1);
-            } else if (file.equals("file2")) {
-                pathFile2 = db.getFiles().toString();
-                pathFile2 = pathFile2.substring(1, pathFile2.length()-1);
-            } else {
-                success = false;
+            try {
+                Image pdfIcon = new Image(getClass().getResource("/pdfIcon.png").toURI().toString(), 100, 100, false, false);
+                if (file.equals("file1")) {
+                    pathFile1 = db.getFiles().toString();
+                    pathFile1 = pathFile1.substring(1, pathFile1.length() - 1);
+                    if (pathFile1.endsWith(".pdf")) {
+                        imgFile1.setImage(pdfIcon);
+                    } else {
+                        imgFile1.setImage(null);
+                    }
+                } else if (file.equals("file2")) {
+                    pathFile2 = db.getFiles().toString();
+                    pathFile2 = pathFile2.substring(1, pathFile2.length() - 1);
+                    if (pathFile2.endsWith(".pdf")) {
+                        imgFile2.setImage(pdfIcon);
+                    } else {
+                        imgFile2.setImage(null);
+                    }
+                } else {
+                    success = false;
+                }
+            } catch (URISyntaxException _e) {
+                System.out.println("Error reading image URI");
             }
         }
         e.setDropCompleted(success);
@@ -60,15 +80,16 @@ public class Controller implements Initializable {
 
     @FXML
     private void generateReport() {
+        // get input files
         if (pathFile1 == null) {
-            AlertBox.display("No file provided", "Provide a file path for File 1.");
+            AlertBox.display("No file provided", "Provide a file for File 1.");
             return;
         } else if (pathFile2 == null) {
-            AlertBox.display("No file provided", "Provide a file path for File 2.");
+            AlertBox.display("No file provided", "Provide a file for File 2.");
+            return;
         }
         File file1 = new File(pathFile1);
         File file2 = new File(pathFile2);
-
         if (!file1.exists()) {
             AlertBox.display("File not found", pathFile1 + " could not be opened.");
             return;
@@ -76,11 +97,29 @@ public class Controller implements Initializable {
             AlertBox.display("File not found", pathFile2 + " could not be opened.");
             return;
         }
-        // get text out path
-        String pathOut = textOutPath.getText();
+        if (!pathFile1.endsWith(".pdf")) {
+            AlertBox.display("Invalid file type", "Select a PDF file for File 1.");
+            return;
+        } else if (!pathFile2.endsWith(".pdf")) {
+            AlertBox.display("Invalid file type", "Select a PDF file for File 2.");
+            return;
+        }
+
+        // get output path
+        String pathOut = textOutDir.getText();
+        if (pathOut == null) {
+            AlertBox.display("No directory provided", "Select a directory where the files will be saved.");
+            return;
+        }
+        String name = textOutName.getText();
+        if (name == null ) {
+            AlertBox.display("No file name provided", "Enter a name for the generated files.");
+            return;
+        }
+
         // get -d flag
         String dumpArg = checkBoxCopySummary.isSelected() ? "-d" : null;
-        PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut, dumpArg});
+        PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut+"/"+name, dumpArg});
 
     }
 
@@ -89,9 +128,10 @@ public class Controller implements Initializable {
         paneFile1.setOnDragDropped(e -> dragDroppedHandler(e, "file1"));
         paneFile2.setOnDragDropped(e -> dragDroppedHandler(e, "file2"));
 
+
         // make a file explorer/chooser for output path
 
-        // display modal with report summary
+        // make drop locations display file type thumbnail, maybe validate that it's a pdf
 
     }
 }

@@ -12,11 +12,11 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.regex.Pattern;
 
 public class PDFDiff {
 
@@ -30,7 +30,7 @@ public class PDFDiff {
                    );
     }
 
-    private static String printReport(LinkedList<diff_match_patch.Diff> diff_list) {
+    private static String createSummary(LinkedList<diff_match_patch.Diff> diff_list) {
         LinkedList<diff_match_patch.Diff> diff = new LinkedList<>(diff_list);
         StringBuilder result = new StringBuilder();
         if (diff.isEmpty()) {
@@ -47,6 +47,7 @@ public class PDFDiff {
                 for (diff_match_patch.Diff d : diff) {
                     result.append(formatDiff(d, ++i));
                 }
+                result.append("\nTo quickly find these differences in the report, use CTRL+F to search for the keyword PDFDIFF.");
             }
         }
         return result.toString();
@@ -172,11 +173,19 @@ public class PDFDiff {
                 // HTML diff
                 LinkedList<diff_match_patch.Diff> diff = dmp.diff_main(file1Text, file2Text);
                 String html = dmp.diff_prettyHtml(diff);
+
                 // do any desired cleanup/formatting
                 html = html.replaceAll("&para;", "");
+                html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
+
+                // flag any differences for easy searching
+                html = html.replaceAll("<del", " PDFDIFF:<del").replaceAll("<ins", " PDFDIFF:<ins");
+
                 // dump to file
                 try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
                     outWriter.print(html);
+                } catch (IOException _e) {
+                    AlertBox.display("Error writing to file", "Could not open file for writing.");
                 }
 
                 // if some flag, compare graphically
@@ -184,12 +193,13 @@ public class PDFDiff {
                 // cleaned-up version, highlights differences, more readable
                 LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(file1Text, file2Text);
                 dmp.diff_cleanupSemantic(semDiff);
-                AlertBox.display( "Summary Report", printReport(semDiff) );
+
+                AlertBox.display( "Summary Report", createSummary(semDiff) );
                 if (dump) {
                     String summaryFile = outFile + "_summary.txt.";
                     try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
                         System.out.println("Copying this report to " + summaryFile);
-                        pw.println(printReport(semDiff));
+                        pw.println(createSummary(semDiff));
                     } catch (IOException _e) {
                         AlertBox.display("Error writing to file", "Could not open file for writing copy of summary report.");
                     }
