@@ -107,6 +107,7 @@ public class Controller implements Initializable {
 
     @FXML
     private void generateReport() {
+
         // get input files
         if (!validateInputFiles())
             return;

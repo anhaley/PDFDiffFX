@@ -22,21 +22,24 @@ public class PDFDiffFX extends Application {
             controller.btnOutDir.setOnAction( e -> {
                 DirectoryChooser chooser = new DirectoryChooser();
                 File defaultDir = new File("results");
-                if (!defaultDir.exists())
-                    defaultDir.mkdir();
+                if (!defaultDir.exists()) {
+                    if (!defaultDir.mkdir()) {
+                        AlertBox.display("File error", "Could not create this directory.\nPlease try again.");
+                    }
+                }
                 chooser.setInitialDirectory(new File("results"));
                 try {
                     controller.textOutDir.setText(chooser.showDialog(primaryStage).getAbsolutePath());
                 } catch (NullPointerException ignored) {} // null returned when "Cancel" clicked
             });
 
-//            Parent root = FXMLLoader.load(getClass().getResource("/pdfDiffFX.fxml"));
             primaryStage.setTitle("PDFDiff");
             primaryStage.setScene(new Scene(root, 650, 400));
 
             primaryStage.show();
         } catch (IOException e) {
             // open dialog describing error
+            AlertBox.display("Error","Unhandled error encountered.\nPlease report this incident to the developer.");
             e.printStackTrace();
         }
     }
