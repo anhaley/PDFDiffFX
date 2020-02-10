@@ -78,32 +78,38 @@ public class Controller implements Initializable {
         e.consume();
     }
 
-    @FXML
-    private void generateReport() {
-        // get input files
+    private boolean validateInputFiles() {
         if (pathFile1 == null) {
             AlertBox.display("No file provided", "Provide a file for File 1.");
-            return;
+            return false;
         } else if (pathFile2 == null) {
             AlertBox.display("No file provided", "Provide a file for File 2.");
-            return;
+            return false;
         }
         File file1 = new File(pathFile1);
         File file2 = new File(pathFile2);
         if (!file1.exists()) {
             AlertBox.display("File not found", pathFile1 + " could not be opened.");
-            return;
+            return false;
         } else if (!file2.exists()) {
             AlertBox.display("File not found", pathFile2 + " could not be opened.");
-            return;
+            return false;
         }
         if (!pathFile1.endsWith(".pdf")) {
             AlertBox.display("Invalid file type", "Select a PDF file for File 1.");
-            return;
+            return false;
         } else if (!pathFile2.endsWith(".pdf")) {
             AlertBox.display("Invalid file type", "Select a PDF file for File 2.");
-            return;
+            return false;
         }
+        return true;
+    }
+
+    @FXML
+    private void generateReport() {
+        // get input files
+        if (!validateInputFiles())
+            return;
 
         // get output path
         String pathOut = textOutDir.getText();
@@ -119,6 +125,7 @@ public class Controller implements Initializable {
 
         // get -d flag
         String dumpArg = checkBoxCopySummary.isSelected() ? "-d" : null;
+
         PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut+"/"+name, dumpArg});
 
     }
@@ -127,11 +134,5 @@ public class Controller implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         paneFile1.setOnDragDropped(e -> dragDroppedHandler(e, "file1"));
         paneFile2.setOnDragDropped(e -> dragDroppedHandler(e, "file2"));
-
-
-        // make a file explorer/chooser for output path
-
-        // make drop locations display file type thumbnail, maybe validate that it's a pdf
-
     }
 }
