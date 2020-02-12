@@ -126,8 +126,9 @@ public class Controller implements Initializable {
 
         // get -d flag
         String dumpArg = checkBoxCopySummary.isSelected() ? "-d" : null;
+        String graphicalArg = checkBoxReportVisual.isSelected() ? "-g" : null;
 
-        PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut+"/"+name, dumpArg});
+        PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut+"/"+name, dumpArg, graphicalArg});
 
     }
 

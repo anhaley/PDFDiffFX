@@ -1,5 +1,7 @@
 package PDFDiffFX;
 
+import de.redsix.pdfcompare.CompareResult;
+import de.redsix.pdfcompare.PdfComparator;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -16,9 +18,10 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.regex.Pattern;
 
 public class PDFDiff {
+
+    static String filename1, filename2, outFile;
 
     private static void printUsage() {
         System.out.println(
@@ -136,6 +139,16 @@ public class PDFDiff {
         }
     }
 
+    private static void generateGraphicalDiff() throws IOException {
+        CompareResult graphicalDiff = new PdfComparator(filename1, filename2).compare();
+        if (!graphicalDiff.isEqual()) {
+            graphicalDiff.writeTo(outFile+"_visual_diff");
+        }
+    }
+
+    // enhancement: instead of scraping entire file, go page-by-page to make it easier to find?
+    // mention that we can list excluded areas
+
     public static void main(String[] args) {
 
         if (args.length < 3) {
@@ -152,14 +165,21 @@ public class PDFDiff {
             argList.remove("-d");
         }
 
-        String fileName1 = argList.get(0);
-        String fileName2 = argList.get(1);
-        String outFile = argList.get(2);
+        // flag for doing graphical diff
+        boolean graphical = false;
+        if (argList.contains("-g")) {
+            graphical = true;
+            argList.remove("-g");
+        }
+
+        filename1 = argList.get(0);
+        filename2 = argList.get(1);
+        outFile   = argList.get(2);
 
         // open documents
-        File file1 = new File(fileName1);
+        File file1 = new File(filename1);
         try (PDDocument doc1 = PDDocument.load(file1)) {
-            File file2 = new File(fileName2);
+            File file2 = new File(filename2);
             try (PDDocument doc2 = PDDocument.load(file2)) {
 
                 // strip text from both documents
@@ -184,11 +204,11 @@ public class PDFDiff {
                 // dump to file
                 try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
                     outWriter.print(html);
-                } catch (IOException _e) {
-                    AlertBox.display("Error writing to file", "Could not open file for writing.");
                 }
 
                 // if some flag, compare graphically
+                if (graphical)
+                    generateGraphicalDiff();
 
                 // cleaned-up version, highlights differences, more readable
                 LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(file1Text, file2Text);
@@ -196,12 +216,10 @@ public class PDFDiff {
 
                 AlertBox.display( "Summary Report", createSummary(semDiff) );
                 if (dump) {
-                    String summaryFile = outFile + "_summary.txt.";
+                    String summaryFile = outFile + "_summary.txt";
                     try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
                         System.out.println("Copying this report to " + summaryFile);
                         pw.println(createSummary(semDiff));
-                    } catch (IOException _e) {
-                        AlertBox.display("Error writing to file", "Could not open file for writing copy of summary report.");
                     }
                 }
             }

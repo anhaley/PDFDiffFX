@@ -30,6 +30,11 @@
             <version>5.6.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>de.redsix</groupId>
+            <artifactId>pdfcompare</artifactId>
+            <version>1.1.44</version>
+        </dependency>
     </dependencies>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
