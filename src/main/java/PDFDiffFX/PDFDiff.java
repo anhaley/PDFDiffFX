@@ -2,6 +2,7 @@ package PDFDiffFX;
 
 import de.redsix.pdfcompare.CompareResult;
 import de.redsix.pdfcompare.PdfComparator;
+import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -139,6 +140,15 @@ public class PDFDiff {
         }
     }
 
+    private static ArrayList<PDDocument> pdftoPages(PDDocument document) {
+        try {
+            return new ArrayList<>(new Splitter().split(document));
+        } catch (IOException e) {
+            AlertBox.display("Document error", "Error encountered while attempting to paginate document");
+            return null;
+        }
+    }
+
     private static void generateGraphicalDiff() throws IOException {
         CompareResult graphicalDiff = new PdfComparator(filename1, filename2).compare();
         if (!graphicalDiff.isEqual()) {
@@ -214,7 +224,6 @@ public class PDFDiff {
                 LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(file1Text, file2Text);
                 dmp.diff_cleanupSemantic(semDiff);
 
-                AlertBox.display( "Summary Report", createSummary(semDiff) );
                 if (dump) {
                     String summaryFile = outFile + "_summary.txt";
                     try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
@@ -222,6 +231,7 @@ public class PDFDiff {
                         pw.println(createSummary(semDiff));
                     }
                 }
+                AlertBox.display( "Summary Report", createSummary(semDiff) );
             }
         } catch (IOException _ioe) {
             System.out.println("Could not open files");
