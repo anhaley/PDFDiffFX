@@ -48,17 +48,37 @@ public class PDFDiff {
             }
         }
         // visual
-        if (graphicalDiffPageArray == null || graphicalDiffPageArray.isEmpty()) {
-            result.append("\n\nNo visual differences identified.");
-        } else {
-            result.append("\n\nVisual differences identified on the following pages:\n");
-            for (int i = 0; i < graphicalDiffPageArray.size(); i++) {
-                if (i > 0)
-                    result.append(",");
-                result.append(i);
+
+        if (graphicalDiffPageArray != null) {
+            if (graphicalDiffPageArray.isEmpty()) {
+                result.append("\n\nNo visual differences identified.");
+            } else {
+                result.append("\n\nVisual differences identified on the following pages:\n");
+                result.append(compressRange(graphicalDiffPageArray));
             }
         }
         return result.toString();
+    }
+
+    private static String compressRange(ArrayList<Integer> pageArray) {
+        StringBuilder result = new StringBuilder();
+        int previous = pageArray.get(0), start = previous;
+        for (int next : pageArray.subList(1, pageArray.size())) {
+            // if increment is 1, skip; else, gap is larger, so write as range
+            if (previous != next - 1) {
+                result.append(compressRangeHelper(start, previous)).append(",");
+                start = next;
+            }
+            previous = next;
+        }
+        return result.append(compressRangeHelper(start, previous)).toString();
+    }
+
+    private static String compressRangeHelper(int start, int previous) {
+        String ret = String.valueOf(start);
+        if (start != previous)
+            ret += (previous - start > 1 ? "-" : ",") + previous;
+        return ret;
     }
 
     private static String formatDiff(diff_match_patch.Diff d, int index) {
@@ -200,6 +220,7 @@ public class PDFDiff {
                 // TODO: make configurable by page range
                 // TODO: make text go by pages
                 // TODO: report by page number
+                // TODO: extract report generation into separate class to cut down on file size
 
                 // compare textually
                 generateTextualDiff(file1Pages, file2Pages);
