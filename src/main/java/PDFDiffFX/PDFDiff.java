@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PDFDiff {
 
@@ -28,8 +29,8 @@ public class PDFDiff {
                    );
     }
 
-    private static String createSummary(LinkedList<diff_match_patch.Diff> diff_list, ArrayList<Integer> graphicalDiffPageArray) {
-        LinkedList<diff_match_patch.Diff> diff = new LinkedList<>(diff_list);
+    private static String createSummary(List<diff_match_patch.Diff> diff_list, List<Integer> graphicalDiffPageArray) {
+        List<diff_match_patch.Diff> diff = new LinkedList<>(diff_list);
         StringBuilder result = new StringBuilder();
         // text
         if (diff.isEmpty()) {
@@ -56,13 +57,14 @@ public class PDFDiff {
                 result.append("\n\nNo visual differences identified.");
             } else {
                 result.append("\n\nVisual differences identified on the following pages:\n");
-                result.append(compressRange(graphicalDiffPageArray));
+                List<Integer> oneIndexedPages = graphicalDiffPageArray.stream().map(i -> i+1).collect(Collectors.toList());
+                result.append(compressRange(oneIndexedPages));
             }
         }
         return result.toString();
     }
 
-    private static String compressRange(ArrayList<Integer> pageArray) {
+    private static String compressRange(List<Integer> pageArray) {
         StringBuilder result = new StringBuilder();
         int previous = pageArray.get(0), start = previous;
         for (int next : pageArray.subList(1, pageArray.size())) {
@@ -93,11 +95,7 @@ public class PDFDiff {
         return baos.toByteArray();
     }
 
-    private static PDDocument byteArrayToPdf(byte[] doc) throws IOException {
-        return PDDocument.load(doc);
-    }
-
-    private static PDDocument pagesToPdf(ArrayList<PDDocument> pages) {
+    private static PDDocument pagesToPdf(List<PDDocument> pages) {
         PDFMergerUtility pdfMerger = new PDFMergerUtility();
         PDDocument doc = new PDDocument();
         try {
@@ -111,7 +109,7 @@ public class PDFDiff {
         return doc;
     }
 
-    private static ArrayList<PDDocument> pdfToPages(PDDocument document) {
+    private static List<PDDocument> pdfToPages(PDDocument document) {
         try {
             return new ArrayList<>(new Splitter().split(document));
         } catch (IOException e) {
@@ -136,11 +134,11 @@ public class PDFDiff {
         return result;
     }
 
-    private static ArrayList<Integer> generateGraphicalDiff(ArrayList<PDDocument> file1Pages, ArrayList<PDDocument> file2Pages)
+    private static List<Integer> generateGraphicalDiff(List<PDDocument> file1Pages, List<PDDocument> file2Pages)
             throws IOException {
 
-        ArrayList<PDDocument> graphicalDiffPages = new ArrayList<>();
-        ArrayList<Integer> diffArray = new ArrayList<>();
+        List<PDDocument> graphicalDiffPages = new ArrayList<>();
+        List<Integer> diffArray = new ArrayList<>();
         if (file1Pages != null && file2Pages != null) {
             int minPages = Math.min(file1Pages.size(), file2Pages.size());
             for (int i = 0; i < minPages; i++) {
@@ -153,9 +151,9 @@ public class PDFDiff {
             }
             // leftovers
             if (file1Pages.size() > minPages) {
-                appendLeftoverPages(graphicalDiffPages, file1Pages, diffArray, minPages);
+                appendLeftoverGraphicalPages(graphicalDiffPages, file1Pages, diffArray, minPages);
             } else if (file2Pages.size() > minPages) {
-                appendLeftoverPages(graphicalDiffPages, file2Pages, diffArray, minPages);
+                appendLeftoverGraphicalPages(graphicalDiffPages, file2Pages, diffArray, minPages);
             }
         }
         // if difflist not empty, write to file
@@ -169,14 +167,15 @@ public class PDFDiff {
         return diffArray;
     }
 
-    private static void appendLeftoverPages(ArrayList<PDDocument> graphicalDiffPages, ArrayList<PDDocument> pages,
-                                            ArrayList<Integer> diffArray, int startingPage) {
+    private static void appendLeftoverGraphicalPages(
+            List<PDDocument> graphicalDiffPages, List<PDDocument> pages, List<Integer> diffArray, int startingPage) {
         for (int i = startingPage; i < pages.size(); i++) {
             graphicalDiffPages.add(pages.get(i));
             diffArray.add(i);
         }
     }
 
+    // TODO: move enclosing functionality from main to here, so we don't need to return anything
     private static void generateTextualDiff(List<String> paginatedStringDiffs, List<Integer> pagesWithDiffs,
                                               List<PDDocument> file1Pages, List<PDDocument> file2Pages) throws IOException {
         if (file1Pages == null || file2Pages == null) {
@@ -201,18 +200,30 @@ public class PDFDiff {
             html = html.replaceAll("&para;", "");
             html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
 
-            // flag any differences for easy searching
-            html = html.replaceAll("<del", " PDFDIFF:<del").replaceAll("<ins", " PDFDIFF:<ins");
-            html = "Page " + i + "\n\n" + html;
-            // if any differences flagged, add to report
-            if (html.contains("PDFDIFF")) {
-                paginatedStringDiffs.add(html);
+            // if any differences flagged, add page to report
+            if (html.contains("<del") || html.contains("<ins")) {
+                String header = "<p style=\"page-break-before:always; font-weight:bold; text-indent:20em;\">-----Page "
+                        + i + "-----</p><br>";
+                paginatedStringDiffs.add(header + html);
+                pagesWithDiffs.add(i);
+            }
+        }
+        // leftovers
+        if (file1Pages.size() > minPages) {
+            for (int i = minPages; i < file1Pages.size(); i++) {
+                paginatedStringDiffs.add(textStripper.getText(file1Pages.get(i)));
+                pagesWithDiffs.add(i);
+            }
+        } else if (file2Pages.size() > minPages) {
+            for (int i = minPages; i < file1Pages.size(); i++) {
+                paginatedStringDiffs.add(textStripper.getText(file2Pages.get(i)));
                 pagesWithDiffs.add(i);
             }
         }
     }
 
-    static void processArgs(String[] args) {
+
+    private static void processArgs(String[] args) {
 
         List<String> argList = new ArrayList<>(Arrays.asList(args));
 
@@ -250,25 +261,29 @@ public class PDFDiff {
             File file2 = new File(filename2);
             try (PDDocument doc2 = PDDocument.load(file2)) {
 
-                ArrayList<Integer> graphicalDiffPageArray = null;
+                List<Integer> graphicalDiffPageArray = null;
 
                 // go page-by-page
 
                 // compare graphically
-                ArrayList<PDDocument> file1Pages = pdfToPages(doc1);
-                ArrayList<PDDocument> file2Pages = pdfToPages(doc2);
+                List<PDDocument> file1Pages = pdfToPages(doc1);
+                List<PDDocument> file2Pages = pdfToPages(doc2);
                 if (graphical) {
                     graphicalDiffPageArray = generateGraphicalDiff(file1Pages, file2Pages);
                 }
 
                 // TODO: make configurable by page range
                 // TODO: extract report generation into separate class to cut down on file size
+                // TODO: package all result files in a folder
+                // TODO: add Javadocs
+                // TODO: add a Readme that explains the different reports and how to interpret them.
+                //      include pictures of example reports
+                //      add a button/toolbar item to the GUI to launch this Readme
 
                 // compare textually
                 List<String> paginatedStringDiffs = new ArrayList<>();
-                List<Integer> pagesWithDiffs = new ArrayList<>();
-                diff_match_patch dmp = new diff_match_patch();
-                generateTextualDiff(paginatedStringDiffs, pagesWithDiffs, file1Pages, file2Pages);
+                List<Integer> pagesWithVisualDiffs = new ArrayList<>();
+                generateTextualDiff(paginatedStringDiffs, pagesWithVisualDiffs, file1Pages, file2Pages);
 
                 // dump to file
                 if (paginatedStringDiffs.size() != 0) {
@@ -281,10 +296,9 @@ public class PDFDiff {
                     }
                 }
 
-                // TODO: take pagesWithDiffs and feed to summary generator; use page numbers instead of counter in those lines
-
-                // cleaned-up version, highlights differences, more readable
+                // cleaned-up version, highlights differences, more readable; for summary
                 PDFTextStripper textStripper = new PDFTextStripper();
+                diff_match_patch dmp = new diff_match_patch();
                 LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(textStripper.getText(doc1), textStripper.getText(doc2));
                 dmp.diff_cleanupSemantic(semDiff);
 
@@ -299,6 +313,7 @@ public class PDFDiff {
             }
         } catch (IOException _ioe) {
             System.out.println("Could not open files");
+            _ioe.printStackTrace();
         }
 
     }
