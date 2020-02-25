@@ -11,10 +11,12 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
 
 public class PDFDiff {
 
     static String filename1, filename2, outFile;
+    static boolean dump = false, graphical = false;
 
     private static void printUsage() {
         System.out.println(
@@ -88,7 +90,6 @@ public class PDFDiff {
     private static byte[] pageToByteArray(PDDocument page) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         page.save(baos);
-        page.close();
         return baos.toByteArray();
     }
 
@@ -137,10 +138,6 @@ public class PDFDiff {
 
     private static ArrayList<Integer> generateGraphicalDiff(ArrayList<PDDocument> file1Pages, ArrayList<PDDocument> file2Pages)
             throws IOException {
-//        CompareResult graphicalDiff = new PdfComparator<>(filename1, filename2).compare();
-//        if (!graphicalDiff.isEqual()) {
-//            graphicalDiff.writeTo(outFile+"_visual_diff");
-//        }
 
         ArrayList<PDDocument> graphicalDiffPages = new ArrayList<>();
         ArrayList<Integer> diffArray = new ArrayList<>();
@@ -154,6 +151,12 @@ public class PDFDiff {
                     diffArray.add(i);
                 }
             }
+            // leftovers
+            if (file1Pages.size() > minPages) {
+                appendLeftoverPages(graphicalDiffPages, file1Pages, diffArray, minPages);
+            } else if (file2Pages.size() > minPages) {
+                appendLeftoverPages(graphicalDiffPages, file2Pages, diffArray, minPages);
+            }
         }
         // if difflist not empty, write to file
         if (!graphicalDiffPages.isEmpty()) {
@@ -166,11 +169,70 @@ public class PDFDiff {
         return diffArray;
     }
 
-    private static void generateTextualDiff(ArrayList<PDDocument> file1Pages, ArrayList<PDDocument> file2Pages) {
-
+    private static void appendLeftoverPages(ArrayList<PDDocument> graphicalDiffPages, ArrayList<PDDocument> pages,
+                                            ArrayList<Integer> diffArray, int startingPage) {
+        for (int i = startingPage; i < pages.size(); i++) {
+            graphicalDiffPages.add(pages.get(i));
+            diffArray.add(i);
+        }
     }
 
-    // enhancement: instead of scraping entire file, go page-by-page to make it easier to find?
+    private static void generateTextualDiff(List<String> paginatedStringDiffs, List<Integer> pagesWithDiffs,
+                                              List<PDDocument> file1Pages, List<PDDocument> file2Pages) throws IOException {
+        if (file1Pages == null || file2Pages == null) {
+            AlertBox.display("Pagination error", "Error encountered while paginating documents");
+            return;
+        }
+        PDFTextStripper textStripper = new PDFTextStripper();
+        diff_match_patch dmp = new diff_match_patch();
+
+        int minPages = Math.min(file1Pages.size(), file2Pages.size());
+        for (int i = 0; i < minPages; i++) {
+            String page1 = textStripper.getText(file1Pages.get(i));
+            String page2 = textStripper.getText(file2Pages.get(i));
+
+            // compute difference between documents
+
+            // HTML diff
+            LinkedList<diff_match_patch.Diff> diff = dmp.diff_main(page1, page2);
+            String html = dmp.diff_prettyHtml(diff);
+
+            // do any desired cleanup/formatting
+            html = html.replaceAll("&para;", "");
+            html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
+
+            // flag any differences for easy searching
+            html = html.replaceAll("<del", " PDFDIFF:<del").replaceAll("<ins", " PDFDIFF:<ins");
+            html = "Page " + i + "\n\n" + html;
+            // if any differences flagged, add to report
+            if (html.contains("PDFDIFF")) {
+                paginatedStringDiffs.add(html);
+                pagesWithDiffs.add(i);
+            }
+        }
+    }
+
+    static void processArgs(String[] args) {
+
+        List<String> argList = new ArrayList<>(Arrays.asList(args));
+
+        // flag for copying stdout to file
+        if (argList.contains("-d")) {
+            dump = true;
+            argList.remove("-d");
+        }
+
+        // flag for doing graphical diff
+        if (argList.contains("-g")) {
+            graphical = true;
+            argList.remove("-g");
+        }
+
+        filename1 = argList.get(0);
+        filename2 = argList.get(1);
+        outFile   = argList.get(2);
+    }
+
     // mention that we can list excluded areas
 
     public static void main(String[] args) {
@@ -180,25 +242,7 @@ public class PDFDiff {
             return;
         }
 
-        ArrayList<String> argList = new ArrayList<>(Arrays.asList(args));
-
-        // flag for copying stdout to file
-        boolean dump = false;
-        if (argList.contains("-d")) {
-            dump = true;
-            argList.remove("-d");
-        }
-
-        // flag for doing graphical diff
-        boolean graphical = false;
-        if (argList.contains("-g")) {
-            graphical = true;
-            argList.remove("-g");
-        }
-
-        filename1 = argList.get(0);
-        filename2 = argList.get(1);
-        outFile   = argList.get(2);
+        processArgs(args);
 
         // open documents
         File file1 = new File(filename1);
@@ -218,41 +262,30 @@ public class PDFDiff {
                 }
 
                 // TODO: make configurable by page range
-                // TODO: make text go by pages
-                // TODO: report by page number
                 // TODO: extract report generation into separate class to cut down on file size
 
                 // compare textually
-                generateTextualDiff(file1Pages, file2Pages);
-
-                // compare documents as wholes
-
-                // strip text from both documents
-                PDFTextStripper textStripper = new PDFTextStripper();
-                String file1Text = textStripper.getText(doc1);
-                String file2Text = textStripper.getText(doc2);
-
-                // compute difference between documents
+                List<String> paginatedStringDiffs = new ArrayList<>();
+                List<Integer> pagesWithDiffs = new ArrayList<>();
                 diff_match_patch dmp = new diff_match_patch();
-
-                // HTML diff
-                LinkedList<diff_match_patch.Diff> diff = dmp.diff_main(file1Text, file2Text);
-                String html = dmp.diff_prettyHtml(diff);
-
-                // do any desired cleanup/formatting
-                html = html.replaceAll("&para;", "");
-                html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
-
-                // flag any differences for easy searching
-                html = html.replaceAll("<del", " PDFDIFF:<del").replaceAll("<ins", " PDFDIFF:<ins");
+                generateTextualDiff(paginatedStringDiffs, pagesWithDiffs, file1Pages, file2Pages);
 
                 // dump to file
-                try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
-                    outWriter.print(html);
+                if (paginatedStringDiffs.size() != 0) {
+                    try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
+                        StringBuilder sb = new StringBuilder();
+                        for (String s : paginatedStringDiffs) {
+                            sb.append(s);
+                        }
+                        outWriter.print(sb.toString());
+                    }
                 }
 
+                // TODO: take pagesWithDiffs and feed to summary generator; use page numbers instead of counter in those lines
+
                 // cleaned-up version, highlights differences, more readable
-                LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(file1Text, file2Text);
+                PDFTextStripper textStripper = new PDFTextStripper();
+                LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(textStripper.getText(doc1), textStripper.getText(doc2));
                 dmp.diff_cleanupSemantic(semDiff);
 
                 if (dump) {
