@@ -16,13 +16,13 @@ import java.util.stream.Collectors;
 
 public class PDFDiff {
 
-    static String filename1, filename2, outFile;
-    static boolean dump = false, graphical = false;
+    String filename1, filename2, outFile;
+    boolean dump = false, graphical = false;
 
     /**
      * Prints usage instructions. For debugging purposes.
      */
-    private static void printUsage() {
+    private void printUsage() {
         System.out.println(
                    "Usage: pdfDiff <file1> <file2> <dest>\n" +
                    "file1: the first of two files to compare\n" +
@@ -38,7 +38,7 @@ public class PDFDiff {
      * @param graphicalDiffPageArray A list of pages where visual diffs have been identified
      * @return A string containing the summary report
      */
-    private static String createSummary(List<diff_match_patch.Diff> diff_list, List<Integer> graphicalDiffPageArray) {
+    private String createSummary(List<diff_match_patch.Diff> diff_list, List<Integer> graphicalDiffPageArray) {
         List<diff_match_patch.Diff> diff = new LinkedList<>(diff_list);
         StringBuilder result = new StringBuilder();
         // text
@@ -77,7 +77,7 @@ public class PDFDiff {
      * @param nums The list of numbers
      * @return A compressed list in String form
      */
-    private static String compressNumList(List<Integer> nums) {
+    private String compressNumList(List<Integer> nums) {
         StringBuilder result = new StringBuilder();
         int previous = nums.get(0), start = previous;
         for (int next : nums.subList(1, nums.size())) {
@@ -98,7 +98,7 @@ public class PDFDiff {
      * @param end The last element in the run
      * @return A string representation of the run
      */
-    private static String compressRun(int start, int end) {
+    private String compressRun(int start, int end) {
         String ret = String.valueOf(start);
         if (start != end)
             ret += (end - start > 1 ? "-" : ",") + end;
@@ -111,7 +111,7 @@ public class PDFDiff {
      * @return The byte array result
      * @throws IOException if storing the document into the ByteArrayOutputStream fails
      */
-    private static byte[] pageToByteArray(PDDocument doc) throws IOException {
+    private byte[] pageToByteArray(PDDocument doc) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         doc.save(baos);
         return baos.toByteArray();
@@ -122,7 +122,7 @@ public class PDFDiff {
      * @param pages The input list
      * @return The joined document
      */
-    private static PDDocument pagesToPdf(List<PDDocument> pages) {
+    private PDDocument pagesToPdf(List<PDDocument> pages) {
         PDFMergerUtility pdfMerger = new PDFMergerUtility();
         PDDocument doc = new PDDocument();
         try {
@@ -141,7 +141,7 @@ public class PDFDiff {
      * @param document The input document
      * @return The list of pages
      */
-    private static List<PDDocument> pdfToPages(PDDocument document) {
+    private List<PDDocument> pdfToPages(PDDocument document) {
         try {
             return new ArrayList<>(new Splitter().split(document));
         } catch (IOException e) {
@@ -157,7 +157,7 @@ public class PDFDiff {
      * @param doc2 The "actual" document
      * @return The visual diff
      */
-    private static PDDocument graphicalDiffPage(PDDocument doc1, PDDocument doc2) {
+    private PDDocument graphicalDiffPage(PDDocument doc1, PDDocument doc2) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PDDocument result = null;
         try {
@@ -180,7 +180,7 @@ public class PDFDiff {
      * @return A list of pages where differences were identified
      * @throws IOException if error encountered in writing to file
      */
-    private static List<Integer> generateGraphicalDiff(List<PDDocument> file1Pages, List<PDDocument> file2Pages)
+    private List<Integer> generateGraphicalDiff(List<PDDocument> file1Pages, List<PDDocument> file2Pages)
             throws IOException {
 
         List<PDDocument> graphicalDiffPages = new ArrayList<>();
@@ -221,7 +221,7 @@ public class PDFDiff {
      * @param diffPageNums A list of the pages with identified differences
      * @param startingPage The index of the page to start on
      */
-    private static void appendLeftoverGraphicalPages(
+    private void appendLeftoverGraphicalPages(
             List<PDDocument> graphicalDiffPages, List<PDDocument> pages, List<Integer> diffPageNums, int startingPage) {
         for (int i = startingPage; i < pages.size(); i++) {
             graphicalDiffPages.add(pages.get(i));
@@ -229,7 +229,6 @@ public class PDFDiff {
         }
     }
 
-    // TODO: move enclosing functionality from main to here, so we don't need to return anything
     /**
      * Generates a list of textual diffs in String form containing HTML that highlights differences.
      * The list represents pages to make it easier to isolate and find diffs in a large document.
@@ -238,7 +237,7 @@ public class PDFDiff {
      * @param file2Pages The pages of the second document
      * @throws IOException if an error is encountered while stripping text from the documents
      */
-    private static void generateTextualDiff(
+    private void generateTextualDiff(
             List<PDDocument> file1Pages, List<PDDocument> file2Pages) throws IOException {
         if (file1Pages == null || file2Pages == null) {
             AlertBox.display("Pagination error", "Error encountered while paginating documents");
@@ -263,7 +262,7 @@ public class PDFDiff {
 
             // if any differences flagged, add page to report
             if (html.contains("<del") || html.contains("<ins")) {
-                String header = "<p style=\"page-break-before:always; font-weight:bold; text-indent:20em;\">-----Page "
+                String header = "<br><p style=\"page-break-before:always; font-weight:bold; text-indent:20em;\">-----Page "
                         + (i - 1) + "-----</p><br>";
                 paginatedStringDiffs.add(header + html);
             }
@@ -299,7 +298,7 @@ public class PDFDiff {
      * @param graphicalDiffPageNums The list of pages with graphical diffs, as reported earlier
      * @throws IOException if text stripping results in an error
      */
-    private static void showSummary(PDDocument doc1, PDDocument doc2, List<Integer> graphicalDiffPageNums)
+    private void showSummary(PDDocument doc1, PDDocument doc2, List<Integer> graphicalDiffPageNums)
             throws IOException {
         PDFTextStripper textStripper = new PDFTextStripper();
         diff_match_patch dmp = new diff_match_patch();
@@ -320,7 +319,7 @@ public class PDFDiff {
      * Processes the input arguments and populates class variables.
      * @param args The input arguments supplied by the calling class
      */
-    private static void processArgs(String[] args) {
+    private void processArgs(String[] args) {
 
         List<String> argList = new ArrayList<>(Arrays.asList(args));
 
@@ -353,34 +352,35 @@ public class PDFDiff {
     // TODO: page numbers in summary can be confusing, since if one doc is longer than the other, it won't
     //      be clear which pages are which. Specify in the output which document's page nums are listed
     public static void main(String[] args) {
+        PDFDiff engine = new PDFDiff();
 
         if (args.length < 3) {
-            printUsage();
+            engine.printUsage();
             return;
         }
 
-        processArgs(args);
+        engine.processArgs(args);
 
         // open documents
-        File file1 = new File(filename1);
+        File file1 = new File(engine.filename1);
         try (PDDocument doc1 = PDDocument.load(file1)) {
-            File file2 = new File(filename2);
+            File file2 = new File(engine.filename2);
             try (PDDocument doc2 = PDDocument.load(file2)) {
 
-                List<PDDocument> file1Pages = pdfToPages(doc1);
-                List<PDDocument> file2Pages = pdfToPages(doc2);
+                List<PDDocument> file1Pages = engine.pdfToPages(doc1);
+                List<PDDocument> file2Pages = engine.pdfToPages(doc2);
 
                 // compare graphically
                 List<Integer> graphicalDiffPageNums = null;
-                if (graphical) {
-                    graphicalDiffPageNums = generateGraphicalDiff(file1Pages, file2Pages);
+                if (engine.graphical) {
+                    graphicalDiffPageNums = engine.generateGraphicalDiff(file1Pages, file2Pages);
                 }
 
                 // compare textually and write result to file
-                generateTextualDiff(file1Pages, file2Pages);
+                engine.generateTextualDiff(file1Pages, file2Pages);
 
                 // generate summary
-                showSummary(doc1, doc2, graphicalDiffPageNums);
+                engine.showSummary(doc1, doc2, graphicalDiffPageNums);
             }
         } catch (IOException _ioe) {
             System.out.println("Could not open files");

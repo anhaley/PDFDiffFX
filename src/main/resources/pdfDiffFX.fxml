@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.image.*?>
-<?import javafx.scene.text.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
-<?import java.lang.*?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-
 <StackPane fx:id="layout" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="PDFDiffFX.Controller">
     <children>
         <TitledPane fx:id="paneFile1" animated="false" collapsible="false" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onDragOver="#dragOverHandler" prefHeight="140.0" prefWidth="165.0" text="File 1" StackPane.alignment="CENTER_LEFT">
             <StackPane.margin>
-                <Insets bottom="80.0" left="100.0" />
+                <Insets bottom="100.0" left="100.0" />
             </StackPane.margin>
          <content>
             <ImageView fx:id="imgFile1" fitHeight="100.0" fitWidth="150.0" pickOnBounds="true" preserveRatio="true">
@@ -31,7 +28,7 @@
         </Button>
         <TitledPane fx:id="paneFile2" animated="false" collapsible="false" maxHeight="-Infinity" maxWidth="-Infinity" onDragOver="#dragOverHandler" prefHeight="140.0" prefWidth="165.0" text="File 2" StackPane.alignment="CENTER_RIGHT">
             <StackPane.margin>
-                <Insets bottom="80.0" right="100.0" />
+                <Insets bottom="100.0" right="100.0" />
             </StackPane.margin>
          <content>
             <ImageView fx:id="imgFile2" fitHeight="100.0" fitWidth="150.0" pickOnBounds="true" preserveRatio="true">
@@ -61,7 +58,7 @@
         </HBox>
         <Label fx:id="labelInstructions" text="Drag and drop files to below panes" StackPane.alignment="TOP_CENTER">
             <StackPane.margin>
-                <Insets top="50.0" />
+                <Insets top="35.0" />
             </StackPane.margin>
         </Label>
         <VBox alignment="CENTER_LEFT" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="100.0" prefWidth="80.0" StackPane.alignment="CENTER_LEFT">
