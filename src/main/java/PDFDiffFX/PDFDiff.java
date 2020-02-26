@@ -58,7 +58,6 @@ public class PDFDiff {
                 }
             }
         }
-
         // visual
         if (graphicalDiffPageArray != null) {
             if (graphicalDiffPageArray.isEmpty()) {
@@ -207,9 +206,9 @@ public class PDFDiff {
         if (!graphicalDiffPages.isEmpty()) {
             PDDocument graphicalDiff = pagesToPdf(graphicalDiffPages);
             graphicalDiff.save(outFile + "_visual_diff.pdf");
-            graphicalDiff.close();
-            for (PDDocument page : graphicalDiffPages)
-                page.close();
+//            graphicalDiff.close();
+//            for (PDDocument page : graphicalDiffPages)
+//                page.close();
         }
         return diffArray;
     }
@@ -265,7 +264,7 @@ public class PDFDiff {
             // if any differences flagged, add page to report
             if (html.contains("<del") || html.contains("<ins")) {
                 String header = "<p style=\"page-break-before:always; font-weight:bold; text-indent:20em;\">-----Page "
-                        + i + "-----</p><br>";
+                        + (i - 1) + "-----</p><br>";
                 paginatedStringDiffs.add(header + html);
             }
         }
@@ -273,10 +272,12 @@ public class PDFDiff {
         if (file1Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
                 paginatedStringDiffs.add(textStripper.getText(file1Pages.get(i)));
+                // TODO: need to mark these as diffs
             }
         } else if (file2Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
                 paginatedStringDiffs.add(textStripper.getText(file2Pages.get(i)));
+                // TODO: cf ^
             }
         }
         // dump to file
@@ -291,6 +292,13 @@ public class PDFDiff {
         }
     }
 
+    /**
+     * Displays the summary of differences to the user. If checkBoxCopySummary.checked(), write to file.
+     * @param doc1 The first document
+     * @param doc2 The second document
+     * @param graphicalDiffPageNums The list of pages with graphical diffs, as reported earlier
+     * @throws IOException if text stripping results in an error
+     */
     private static void showSummary(PDDocument doc1, PDDocument doc2, List<Integer> graphicalDiffPageNums)
             throws IOException {
         PDFTextStripper textStripper = new PDFTextStripper();
@@ -341,6 +349,9 @@ public class PDFDiff {
     // TODO: add a Readme that explains the different reports and how to interpret them.
     //      include pictures of example reports
     //      add a button/toolbar item to the GUI to launch this Readme
+    // TODO: figure out how to close the documents without breaking functionality
+    // TODO: page numbers in summary can be confusing, since if one doc is longer than the other, it won't
+    //      be clear which pages are which. Specify in the output which document's page nums are listed
     public static void main(String[] args) {
 
         if (args.length < 3) {
@@ -356,10 +367,11 @@ public class PDFDiff {
             File file2 = new File(filename2);
             try (PDDocument doc2 = PDDocument.load(file2)) {
 
-                // compare graphically
-                List<Integer> graphicalDiffPageNums = null;
                 List<PDDocument> file1Pages = pdfToPages(doc1);
                 List<PDDocument> file2Pages = pdfToPages(doc2);
+
+                // compare graphically
+                List<Integer> graphicalDiffPageNums = null;
                 if (graphical) {
                     graphicalDiffPageNums = generateGraphicalDiff(file1Pages, file2Pages);
                 }
