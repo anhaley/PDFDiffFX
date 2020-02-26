@@ -214,11 +214,19 @@ public class PDFDiff {
         return diffArray;
     }
 
+    /**
+     * When one document compared by generateGraphicalDiff is longer than the other, there will be leftover pages.
+     * Add those pages to the result list of differing pages.
+     * @param graphicalDiffPages The partial list of differing pages
+     * @param pages The pages of the larger document
+     * @param diffPageNums A list of the pages with identified differences
+     * @param startingPage The index of the page to start on
+     */
     private static void appendLeftoverGraphicalPages(
-            List<PDDocument> graphicalDiffPages, List<PDDocument> pages, List<Integer> diffArray, int startingPage) {
+            List<PDDocument> graphicalDiffPages, List<PDDocument> pages, List<Integer> diffPageNums, int startingPage) {
         for (int i = startingPage; i < pages.size(); i++) {
             graphicalDiffPages.add(pages.get(i));
-            diffArray.add(i);
+            diffPageNums.add(i);
         }
     }
 
@@ -226,16 +234,16 @@ public class PDFDiff {
     /**
      * Generates a list of textual diffs in String form containing HTML that highlights differences.
      * The list represents pages to make it easier to isolate and find diffs in a large document.
-     * @param pagesWithDiffs A list of pages where differences are found. Comes in empty and is populated here
+     * These pages are then combined and written to a file.
      * @param file1Pages The pages of the first document
      * @param file2Pages The pages of the second document
      * @throws IOException if an error is encountered while stripping text from the documents
      */
-    private static List<String> generateTextualDiff(
-            List<Integer> pagesWithDiffs, List<PDDocument> file1Pages, List<PDDocument> file2Pages) throws IOException {
+    private static void generateTextualDiff(
+            List<PDDocument> file1Pages, List<PDDocument> file2Pages) throws IOException {
         if (file1Pages == null || file2Pages == null) {
             AlertBox.display("Pagination error", "Error encountered while paginating documents");
-            return null;
+            return;
         }
         PDFTextStripper textStripper = new PDFTextStripper();
         diff_match_patch dmp = new diff_match_patch();
@@ -259,22 +267,45 @@ public class PDFDiff {
                 String header = "<p style=\"page-break-before:always; font-weight:bold; text-indent:20em;\">-----Page "
                         + i + "-----</p><br>";
                 paginatedStringDiffs.add(header + html);
-                pagesWithDiffs.add(i);
             }
         }
         // leftovers
         if (file1Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
                 paginatedStringDiffs.add(textStripper.getText(file1Pages.get(i)));
-                pagesWithDiffs.add(i);
             }
         } else if (file2Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
                 paginatedStringDiffs.add(textStripper.getText(file2Pages.get(i)));
-                pagesWithDiffs.add(i);
             }
         }
-        return paginatedStringDiffs;
+        // dump to file
+        if (paginatedStringDiffs.size() != 0) {
+            try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
+                StringBuilder sb = new StringBuilder();
+                for (String s : paginatedStringDiffs) {
+                    sb.append(s);
+                }
+                outWriter.print(sb.toString());
+            }
+        }
+    }
+
+    private static void showSummary(PDDocument doc1, PDDocument doc2, List<Integer> graphicalDiffPageNums)
+            throws IOException {
+        PDFTextStripper textStripper = new PDFTextStripper();
+        diff_match_patch dmp = new diff_match_patch();
+        LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(textStripper.getText(doc1), textStripper.getText(doc2));
+        dmp.diff_cleanupSemantic(semDiff);
+        String summary = createSummary(semDiff, graphicalDiffPageNums);
+        if (dump) {
+            String summaryFile = outFile + "_summary.txt";
+            try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
+                System.out.println("Copying this report to " + summaryFile);
+                pw.println(summary);
+            }
+        }
+        AlertBox.display( "Summary Report", createSummary(semDiff, graphicalDiffPageNums) );
     }
 
     /**
@@ -302,6 +333,14 @@ public class PDFDiff {
         outFile   = argList.get(2);
     }
 
+    // TODO: make configurable by page range
+    // TODO: extract report generation into separate class to cut down on file size
+    // TODO: package all result files in a folder
+    // TODO: add .ini file to configure settings, included excluded regions
+    // TODO: add tests
+    // TODO: add a Readme that explains the different reports and how to interpret them.
+    //      include pictures of example reports
+    //      add a button/toolbar item to the GUI to launch this Readme
     public static void main(String[] args) {
 
         if (args.length < 3) {
@@ -318,51 +357,18 @@ public class PDFDiff {
             try (PDDocument doc2 = PDDocument.load(file2)) {
 
                 // compare graphically
-                List<Integer> graphicalDiffPageArray = null;
+                List<Integer> graphicalDiffPageNums = null;
                 List<PDDocument> file1Pages = pdfToPages(doc1);
                 List<PDDocument> file2Pages = pdfToPages(doc2);
                 if (graphical) {
-                    graphicalDiffPageArray = generateGraphicalDiff(file1Pages, file2Pages);
+                    graphicalDiffPageNums = generateGraphicalDiff(file1Pages, file2Pages);
                 }
 
-                // TODO: make configurable by page range
-                // TODO: extract report generation into separate class to cut down on file size
-                // TODO: package all result files in a folder
-                // TODO: add Javadocs
-                // TODO: add .ini file to configure settings, included excluded regions
-                // TODO: add a Readme that explains the different reports and how to interpret them.
-                //      include pictures of example reports
-                //      add a button/toolbar item to the GUI to launch this Readme
-
-                // compare textually
-                List<Integer> pagesWithVisualDiffs = new ArrayList<>();
-                List<String> paginatedStringDiffs = generateTextualDiff(pagesWithVisualDiffs, file1Pages, file2Pages);
-
-                // dump to file
-                if (paginatedStringDiffs != null && paginatedStringDiffs.size() != 0) {
-                    try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
-                        StringBuilder sb = new StringBuilder();
-                        for (String s : paginatedStringDiffs) {
-                            sb.append(s);
-                        }
-                        outWriter.print(sb.toString());
-                    }
-                }
+                // compare textually and write result to file
+                generateTextualDiff(file1Pages, file2Pages);
 
                 // generate summary
-                PDFTextStripper textStripper = new PDFTextStripper();
-                diff_match_patch dmp = new diff_match_patch();
-                LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(textStripper.getText(doc1), textStripper.getText(doc2));
-                dmp.diff_cleanupSemantic(semDiff);
-
-                if (dump) {
-                    String summaryFile = outFile + "_summary.txt";
-                    try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
-                        System.out.println("Copying this report to " + summaryFile);
-                        pw.println(createSummary(semDiff, graphicalDiffPageArray));
-                    }
-                }
-                AlertBox.display( "Summary Report", createSummary(semDiff, graphicalDiffPageArray) );
+                showSummary(doc1, doc2, graphicalDiffPageNums);
             }
         } catch (IOException _ioe) {
             System.out.println("Could not open files");
