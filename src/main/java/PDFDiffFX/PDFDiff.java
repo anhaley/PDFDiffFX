@@ -68,7 +68,10 @@ public class PDFDiff {
                 result.append( compressNumList(oneIndexedPages) );
             }
         }
-        return result.toString();
+        String pageNumsNote = "\n\nNOTE: Page numbers are based on File 1 (the \"original\" document). If File 2 " +
+                "is longer or shorter than File 1, these page numbers will not necessarily match File 2.";
+
+        return result.append(pageNumsNote).toString();
     }
 
     /**
@@ -263,7 +266,7 @@ public class PDFDiff {
             // if any differences flagged, add page to report
             if (html.contains("<del") || html.contains("<ins")) {
                 String header = "<br><p style=\"page-break-before:always; font-weight:bold; text-indent:20em;\">-----Page "
-                        + (i - 1) + "-----</p><br>";
+                        + (i + 1) + "-----</p><br>";
                 paginatedStringDiffs.add(header + html);
             }
         }
@@ -349,8 +352,6 @@ public class PDFDiff {
     //      include pictures of example reports
     //      add a button/toolbar item to the GUI to launch this Readme
     // TODO: figure out how to close the documents without breaking functionality
-    // TODO: page numbers in summary can be confusing, since if one doc is longer than the other, it won't
-    //      be clear which pages are which. Specify in the output which document's page nums are listed
     public static void main(String[] args) {
         PDFDiff engine = new PDFDiff();
 
