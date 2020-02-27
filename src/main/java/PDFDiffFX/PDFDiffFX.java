@@ -27,7 +27,7 @@ public class PDFDiffFX extends Application {
                         AlertBox.display("File error", "Could not create this directory.\nPlease try again.");
                     }
                 }
-                chooser.setInitialDirectory(new File("results"));
+                chooser.setInitialDirectory(defaultDir);
                 try {
                     controller.textOutDir.setText(chooser.showDialog(primaryStage).getAbsolutePath());
                 } catch (NullPointerException ignored) {} // null returned when "Cancel" clicked

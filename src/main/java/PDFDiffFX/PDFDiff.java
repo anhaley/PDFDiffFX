@@ -284,7 +284,7 @@ public class PDFDiff {
         }
         // dump to file
         if (paginatedStringDiffs.size() != 0) {
-            try (PrintWriter outWriter = new PrintWriter(outFile+".html")) {
+            try (PrintWriter outWriter = new PrintWriter(outFile+"_textual_diff.html")) {
                 StringBuilder sb = new StringBuilder();
                 for (String s : paginatedStringDiffs) {
                     sb.append(s);
