@@ -319,10 +319,19 @@ public class PDFDiff {
     private void generateWholeTextualDiff(PDDocument file1, PDDocument file2) throws IOException {
         String doc1 = textStripper.getText(file1);
         String doc2 = textStripper.getText(file2);
-        try (PrintWriter outWriter = new PrintWriter(outFilePrefix +"_whole_textual_diff.html")) {
-            outWriter.print(generateHtmlDiffFromStrings(doc1, doc2));
+        String html = generateHtmlDiffFromStrings(doc1, doc2);
+        String[] lines = html.split("(?<=<br>)");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) { // streamify?
+            if (line.contains("<ins") || line.contains("<del")) {
+                line = "<pre>PDFDIFF: </pre>" + line;
+            }
+            sb.append(line);
         }
-        // TODO: insert PDFDIFF at the beginning of each line containing a diff for easy searching
+        html = sb.toString();
+        try (PrintWriter outWriter = new PrintWriter(outFilePrefix +"_whole_textual_diff.html")) {
+            outWriter.print(html);
+        }
     }
 
     /**
