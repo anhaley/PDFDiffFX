@@ -260,7 +260,8 @@ public class PDFDiff {
             String html = dmp.diff_prettyHtml(diff);
 
             // do any desired cleanup/formatting
-            html = html.replaceAll("&para;", "");
+//            html = html.replaceAll("&para;", "");
+            // these lines get inserted where no meaningful difference exists, for reasons that are unclear as of yet
             html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
 
             // if any differences flagged, add page to report
@@ -273,13 +274,13 @@ public class PDFDiff {
         // leftovers
         if (file1Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
-                paginatedStringDiffs.add(textStripper.getText(file1Pages.get(i)));
-                // TODO: need to mark these as diffs
+                String page = textStripper.getText(file1Pages.get(i));
+                paginatedStringDiffs.add("<del style=\"background:#ffe6e6;\">" + page + "</del>");
             }
         } else if (file2Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
-                paginatedStringDiffs.add(textStripper.getText(file2Pages.get(i)));
-                // TODO: cf ^
+                String page = textStripper.getText(file2Pages.get(i));
+                paginatedStringDiffs.add("<ins style=\"background:#e6ffe6;\">" + page + "</ins>");
             }
         }
         // dump to file
@@ -341,15 +342,17 @@ public class PDFDiff {
         filename1 = argList.get(0);
         filename2 = argList.get(1);
         outDir = argList.get(2);
-        if ( !( new File(outDir).mkdir() ) )
-            throw new IOException();
+        File od = new File(outDir);
+        if (!od.exists())
+            if (!od.mkdir())
+                throw new IOException();
         String[] pathComponents = outDir.split("/");
         outFilePrefix = outDir + "/" + pathComponents[pathComponents.length - 1];
     }
 
     // TODO: make configurable by page range
     // TODO: extract report generation into separate class to cut down on file size
-    // TODO: add .ini file to configure settings, included excluded regions
+    // TODO: add .ini file to configure settings, including excluded regions
     //      maybe then add toolbar item to open/configure these options
     //      maybe add option, when summary comes back, to say "ignore diffs in this region next time"
     //      or have checkbox that causes the diff regions to be dumped to a file for analysis/coordinate usage
@@ -358,6 +361,8 @@ public class PDFDiff {
     //      include pictures of example reports
     //      add a button/toolbar item to the GUI to launch this Readme
     // TODO: figure out how to close the documents without breaking functionality
+    // TODO: change drop box to show filename
+    // TODO: solve summary window sizing issue
     public static void main(String[] args) {
         PDFDiff engine = new PDFDiff();
 
