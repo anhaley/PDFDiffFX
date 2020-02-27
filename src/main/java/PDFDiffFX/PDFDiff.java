@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 public class PDFDiff {
 
-    String filename1, filename2, outFile;
+    String filename1, filename2, outFilePrefix, outDir;
     boolean dump = false, graphical = false;
 
     /**
@@ -208,7 +208,7 @@ public class PDFDiff {
         // if difflist not empty, write to file
         if (!graphicalDiffPages.isEmpty()) {
             PDDocument graphicalDiff = pagesToPdf(graphicalDiffPages);
-            graphicalDiff.save(outFile + "_visual_diff.pdf");
+            graphicalDiff.save(outFilePrefix + "_visual_diff.pdf");
 //            graphicalDiff.close();
 //            for (PDDocument page : graphicalDiffPages)
 //                page.close();
@@ -284,7 +284,7 @@ public class PDFDiff {
         }
         // dump to file
         if (paginatedStringDiffs.size() != 0) {
-            try (PrintWriter outWriter = new PrintWriter(outFile+"_textual_diff.html")) {
+            try (PrintWriter outWriter = new PrintWriter(outFilePrefix +"_textual_diff.html")) {
                 StringBuilder sb = new StringBuilder();
                 for (String s : paginatedStringDiffs) {
                     sb.append(s);
@@ -309,7 +309,7 @@ public class PDFDiff {
         dmp.diff_cleanupSemantic(semDiff);
         String summary = createSummary(semDiff, graphicalDiffPageNums);
         if (dump) {
-            String summaryFile = outFile + "_summary.txt";
+            String summaryFile = outFilePrefix + "_summary.txt";
             try ( PrintWriter pw = new PrintWriter( new File(summaryFile) ) ) {
                 System.out.println("Copying this report to " + summaryFile);
                 pw.println(summary);
@@ -322,7 +322,7 @@ public class PDFDiff {
      * Processes the input arguments and populates class variables.
      * @param args The input arguments supplied by the calling class
      */
-    private void processArgs(String[] args) {
+    private void processArgs(String[] args) throws IOException {
 
         List<String> argList = new ArrayList<>(Arrays.asList(args));
 
@@ -340,13 +340,19 @@ public class PDFDiff {
 
         filename1 = argList.get(0);
         filename2 = argList.get(1);
-        outFile   = argList.get(2);
+        outDir = argList.get(2);
+        if ( !( new File(outDir).mkdir() ) )
+            throw new IOException();
+        String[] pathComponents = outDir.split("/");
+        outFilePrefix = outDir + "/" + pathComponents[pathComponents.length - 1];
     }
 
     // TODO: make configurable by page range
     // TODO: extract report generation into separate class to cut down on file size
-    // TODO: package all result files in a folder
     // TODO: add .ini file to configure settings, included excluded regions
+    //      maybe then add toolbar item to open/configure these options
+    //      maybe add option, when summary comes back, to say "ignore diffs in this region next time"
+    //      or have checkbox that causes the diff regions to be dumped to a file for analysis/coordinate usage
     // TODO: add tests
     // TODO: add a Readme that explains the different reports and how to interpret them.
     //      include pictures of example reports
@@ -360,30 +366,33 @@ public class PDFDiff {
             return;
         }
 
-        engine.processArgs(args);
+        try {
+            engine.processArgs(args);
 
-        // open documents
-        File file1 = new File(engine.filename1);
-        try (PDDocument doc1 = PDDocument.load(file1)) {
-            File file2 = new File(engine.filename2);
-            try (PDDocument doc2 = PDDocument.load(file2)) {
+            // open documents
+            File file1 = new File(engine.filename1);
+            try (PDDocument doc1 = PDDocument.load(file1)) {
+                File file2 = new File(engine.filename2);
+                try (PDDocument doc2 = PDDocument.load(file2)) {
 
-                List<PDDocument> file1Pages = engine.pdfToPages(doc1);
-                List<PDDocument> file2Pages = engine.pdfToPages(doc2);
+                    List<PDDocument> file1Pages = engine.pdfToPages(doc1);
+                    List<PDDocument> file2Pages = engine.pdfToPages(doc2);
 
-                // compare graphically
-                List<Integer> graphicalDiffPageNums = null;
-                if (engine.graphical) {
-                    graphicalDiffPageNums = engine.generateGraphicalDiff(file1Pages, file2Pages);
+                    // compare graphically
+                    List<Integer> graphicalDiffPageNums = null;
+                    if (engine.graphical) {
+                        graphicalDiffPageNums = engine.generateGraphicalDiff(file1Pages, file2Pages);
+                    }
+
+                    // compare textually and write result to file
+                    engine.generateTextualDiff(file1Pages, file2Pages);
+
+                    // generate summary
+                    engine.showSummary(doc1, doc2, graphicalDiffPageNums);
                 }
-
-                // compare textually and write result to file
-                engine.generateTextualDiff(file1Pages, file2Pages);
-
-                // generate summary
-                engine.showSummary(doc1, doc2, graphicalDiffPageNums);
             }
         } catch (IOException _ioe) {
+            AlertBox.display("File error", "Could not open files. Consult developer's console.");
             System.out.println("Could not open files");
             _ioe.printStackTrace();
         }
