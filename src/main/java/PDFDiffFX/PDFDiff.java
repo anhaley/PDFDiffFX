@@ -18,6 +18,8 @@ public class PDFDiff {
 
     String filename1, filename2, outFilePrefix, outDir;
     boolean dump = false, graphical = false;
+    PDFTextStripper textStripper;
+    diff_match_patch dmp = new diff_match_patch();
 
     /**
      * Prints usage instructions. For debugging purposes.
@@ -183,7 +185,7 @@ public class PDFDiff {
      * @return A list of pages where differences were identified
      * @throws IOException if error encountered in writing to file
      */
-    private List<Integer> generateGraphicalDiff(List<PDDocument> file1Pages, List<PDDocument> file2Pages)
+    private List<Integer> generatePaginatedGraphicalDiff(List<PDDocument> file1Pages, List<PDDocument> file2Pages)
             throws IOException {
 
         List<PDDocument> graphicalDiffPages = new ArrayList<>();
@@ -240,14 +242,12 @@ public class PDFDiff {
      * @param file2Pages The pages of the second document
      * @throws IOException if an error is encountered while stripping text from the documents
      */
-    private void generateTextualDiff(
+    private void generatePaginatedTextualDiff(
             List<PDDocument> file1Pages, List<PDDocument> file2Pages) throws IOException {
         if (file1Pages == null || file2Pages == null) {
             AlertBox.display("Pagination error", "Error encountered while paginating documents");
             return;
         }
-        PDFTextStripper textStripper = new PDFTextStripper();
-        diff_match_patch dmp = new diff_match_patch();
         List<String> paginatedStringDiffs = new ArrayList<>();
 
         int minPages = Math.min(file1Pages.size(), file2Pages.size());
@@ -256,13 +256,7 @@ public class PDFDiff {
             String page2 = textStripper.getText(file2Pages.get(i));
 
             // HTML diff
-            LinkedList<diff_match_patch.Diff> diff = dmp.diff_main(page1, page2);
-            String html = dmp.diff_prettyHtml(diff);
-
-            // do any desired cleanup/formatting
-//            html = html.replaceAll("&para;", "");
-            // these lines get inserted where no meaningful difference exists, for reasons that are unclear as of yet
-            html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
+            String html = generateHtmlDiffFromStrings(page1, page2);
 
             // if any differences flagged, add page to report
             if (html.contains("<del") || html.contains("<ins")) {
@@ -275,17 +269,19 @@ public class PDFDiff {
         if (file1Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
                 String page = textStripper.getText(file1Pages.get(i));
+                // pages don't exist in file 2, so mark them as deletions
                 paginatedStringDiffs.add("<del style=\"background:#ffe6e6;\">" + page + "</del>");
             }
         } else if (file2Pages.size() > minPages) {
             for (int i = minPages; i < file1Pages.size(); i++) {
                 String page = textStripper.getText(file2Pages.get(i));
+                // pages don't exist in file 1, so mark them as insertions
                 paginatedStringDiffs.add("<ins style=\"background:#e6ffe6;\">" + page + "</ins>");
             }
         }
         // dump to file
         if (paginatedStringDiffs.size() != 0) {
-            try (PrintWriter outWriter = new PrintWriter(outFilePrefix +"_textual_diff.html")) {
+            try (PrintWriter outWriter = new PrintWriter(outFilePrefix +"_paginated_textual_diff.html")) {
                 StringBuilder sb = new StringBuilder();
                 for (String s : paginatedStringDiffs) {
                     sb.append(s);
@@ -293,6 +289,40 @@ public class PDFDiff {
                 outWriter.print(sb.toString());
             }
         }
+    }
+
+    /**
+     * Takes two strings and feeds them to the diff engine to generate HTML-formatted comparison.
+     * @param text1 The "original" or "expected" text
+     * @param text2 The "actual" text
+     * @return The HTML-formatted result
+     */
+    private String generateHtmlDiffFromStrings(String text1, String text2) {
+
+        LinkedList<diff_match_patch.Diff> diff = dmp.diff_main(text1, text2);
+        String html = dmp.diff_prettyHtml(diff);
+
+        // do any desired cleanup/formatting
+        html = html.replaceAll("&para;", "");
+        // these lines get inserted where no meaningful difference exists, for reasons that are unclear as of yet
+        html = html.replaceAll("<ins style=\"background:#e6ffe6;\"> </ins><span>", "");
+        return html;
+    }
+
+    /**
+     * Scrapes both files in their entirety and writes out the diffed text. While this is tedious to review, it
+     * has the advantage that it is not thrown off by misaligned pages. If/when a better solution to this problem
+     * is found, this can/should be replaced.
+     * @param file1 The first document
+     * @param file2 The second document
+     */
+    private void generateWholeTextualDiff(PDDocument file1, PDDocument file2) throws IOException {
+        String doc1 = textStripper.getText(file1);
+        String doc2 = textStripper.getText(file2);
+        try (PrintWriter outWriter = new PrintWriter(outFilePrefix +"_whole_textual_diff.html")) {
+            outWriter.print(generateHtmlDiffFromStrings(doc1, doc2));
+        }
+        // TODO: insert PDFDIFF at the beginning of each line containing a diff for easy searching
     }
 
     /**
@@ -304,8 +334,6 @@ public class PDFDiff {
      */
     private void showSummary(PDDocument doc1, PDDocument doc2, List<Integer> graphicalDiffPageNums)
             throws IOException {
-        PDFTextStripper textStripper = new PDFTextStripper();
-        diff_match_patch dmp = new diff_match_patch();
         LinkedList<diff_match_patch.Diff> semDiff = dmp.diff_main(textStripper.getText(doc1), textStripper.getText(doc2));
         dmp.diff_cleanupSemantic(semDiff);
         String summary = createSummary(semDiff, graphicalDiffPageNums);
@@ -372,6 +400,7 @@ public class PDFDiff {
         }
 
         try {
+            engine.textStripper = new PDFTextStripper();
             engine.processArgs(args);
 
             // open documents
@@ -380,17 +409,21 @@ public class PDFDiff {
                 File file2 = new File(engine.filename2);
                 try (PDDocument doc2 = PDDocument.load(file2)) {
 
+                    // generate whole-document comparison
+                    engine.generateWholeTextualDiff(doc1, doc2);
+
+                    // compare page-by-page
                     List<PDDocument> file1Pages = engine.pdfToPages(doc1);
                     List<PDDocument> file2Pages = engine.pdfToPages(doc2);
 
                     // compare graphically
                     List<Integer> graphicalDiffPageNums = null;
                     if (engine.graphical) {
-                        graphicalDiffPageNums = engine.generateGraphicalDiff(file1Pages, file2Pages);
+                        graphicalDiffPageNums = engine.generatePaginatedGraphicalDiff(file1Pages, file2Pages);
                     }
 
-                    // compare textually and write result to file
-                    engine.generateTextualDiff(file1Pages, file2Pages);
+                    // compare textually
+                    engine.generatePaginatedTextualDiff(file1Pages, file2Pages);
 
                     // generate summary
                     engine.showSummary(doc1, doc2, graphicalDiffPageNums);
