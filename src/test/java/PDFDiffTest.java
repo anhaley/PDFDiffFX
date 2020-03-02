@@ -1,4 +1,5 @@
 import PDFDiffFX.PDFDiff;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,9 @@ class PDFDiffTest {
     String pdfDir = "src/test/resources/";
     String policyPdf = pdfDir + "PDFs/00CG596140.pdf";
     String policyPdfMod = pdfDir + "PDFs/00CG596140_modified.pdf";
+
+    @Rule
+    public JavaFXThreadingRule jfxRule = new JavaFXThreadingRule();
 
     @BeforeEach
     void setUp() {

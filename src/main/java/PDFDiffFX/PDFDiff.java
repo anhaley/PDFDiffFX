@@ -67,7 +67,6 @@ public class PDFDiff {
     //      include pictures of example reports
     //      add a button/toolbar item to the GUI to launch this Readme
     // TODO: figure out how to close the documents without breaking functionality
-    // TODO: change drop box to show filename
     // TODO: solve summary window sizing issue
     public static void main(String[] args) {
         PDFDiff engine = new PDFDiff();

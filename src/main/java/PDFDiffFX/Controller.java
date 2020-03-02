@@ -10,10 +10,10 @@ import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.StackPane;
 
+import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ResourceBundle;
-import java.io.File;
 
 public class Controller implements Initializable {
 
@@ -35,6 +35,7 @@ public class Controller implements Initializable {
 
     private String pathFile1;
     private String pathFile2;
+    Image pdfIcon;
 
     @FXML
     private void dragOverHandler(DragEvent e) {
@@ -48,30 +49,31 @@ public class Controller implements Initializable {
         Dragboard db = e.getDragboard();
         e.acceptTransferModes(TransferMode.COPY_OR_MOVE);
         boolean success;
-        if ( (success = db.hasFiles() ) ) {
-            try {
-                Image pdfIcon = new Image(getClass().getResource("/pdfIcon.png").toURI().toString(), 100, 100, false, false);
-                if (file.equals("file1")) {
-                    pathFile1 = db.getFiles().toString();
-                    pathFile1 = pathFile1.substring(1, pathFile1.length() - 1);
-                    if (pathFile1.endsWith(".pdf")) {
-                        imgFile1.setImage(pdfIcon);
-                    } else {
-                        imgFile1.setImage(null);
-                    }
-                } else if (file.equals("file2")) {
-                    pathFile2 = db.getFiles().toString();
-                    pathFile2 = pathFile2.substring(1, pathFile2.length() - 1);
-                    if (pathFile2.endsWith(".pdf")) {
-                        imgFile2.setImage(pdfIcon);
-                    } else {
-                        imgFile2.setImage(null);
-                    }
+        if ((success = db.hasFiles())) {
+            if (file.equals("file1")) {
+                pathFile1 = db.getFiles().toString();
+                pathFile1 = pathFile1.substring(1, pathFile1.length() - 1);
+                if (pathFile1.endsWith(".pdf")) {
+                    imgFile1.setImage(pdfIcon);
+                    String[] pathParts = pathFile1.split("[/\\\\]");
+                    paneFile1.setText(pathParts[pathParts.length - 1]);
                 } else {
-                    success = false;
+                    imgFile1.setImage(null);
+                    paneFile1.setText("Invalid file");
                 }
-            } catch (URISyntaxException _e) {
-                System.out.println("Error reading image URI");
+            } else if (file.equals("file2")) {
+                pathFile2 = db.getFiles().toString();
+                pathFile2 = pathFile2.substring(1, pathFile2.length() - 1);
+                if (pathFile2.endsWith(".pdf")) {
+                    imgFile2.setImage(pdfIcon);
+                    String[] pathParts = pathFile2.split("[/\\\\]");
+                    paneFile2.setText(pathParts[pathParts.length - 1]);
+                } else {
+                    imgFile2.setImage(null);
+                    paneFile2.setText("Invalid file");
+                }
+            } else {
+                success = false;
             }
         }
         e.setDropCompleted(success);
@@ -119,7 +121,7 @@ public class Controller implements Initializable {
             return;
         }
         String name = textOutName.getText();
-        if (name == null ) {
+        if (name == null) {
             AlertBox.display("No file name provided", "Enter a name for the generated files.");
             return;
         }
@@ -128,7 +130,7 @@ public class Controller implements Initializable {
         String dumpArg = checkBoxCopySummary.isSelected() ? "-d" : null;
         String graphicalArg = checkBoxReportVisual.isSelected() ? "-g" : null;
 
-        PDFDiff.main(new String[] {pathFile1, pathFile2, pathOut+"/"+name, dumpArg, graphicalArg});
+        PDFDiff.main(new String[]{pathFile1, pathFile2, pathOut + "/" + name, dumpArg, graphicalArg});
 
     }
 
@@ -136,5 +138,10 @@ public class Controller implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         paneFile1.setOnDragDropped(e -> dragDroppedHandler(e, "file1"));
         paneFile2.setOnDragDropped(e -> dragDroppedHandler(e, "file2"));
+        try {
+            pdfIcon = new Image(getClass().getResource("/pdfIcon.png").toURI().toString(), 100, 100, false, false);
+        } catch (URISyntaxException _e) {
+            System.out.println("Error reading image URI");
+        }
     }
 }
