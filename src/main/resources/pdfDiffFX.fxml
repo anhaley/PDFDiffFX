@@ -105,5 +105,10 @@
             </ImageView>
          </content>
         </TitledPane>
+      <Button fx:id="readmeBtnLaunch" mnemonicParsing="false" onAction="#launchReadme" text="Readme" StackPane.alignment="BOTTOM_RIGHT">
+         <StackPane.margin>
+            <Insets bottom="20.0" right="20.0" />
+         </StackPane.margin>
+      </Button>
     </children>
 </StackPane>

@@ -208,6 +208,7 @@ public class ReportTool {
 //            graphicalDiff.close();
 //            for (PDDocument page : graphicalDiffPages)
 //                page.close();
+            // TODO: figure out how to close the documents without breaking functionality
         }
         return diffArray;
     }

@@ -32,6 +32,7 @@ public class Controller implements Initializable {
     public Button btnOutDir;
     public ImageView imgFile1;
     public ImageView imgFile2;
+    public Button readmeBtnLaunch;
 
     private String pathFile1;
     private String pathFile2;
@@ -131,6 +132,11 @@ public class Controller implements Initializable {
         String graphicalArg = checkBoxReportVisual.isSelected() ? "-g" : null;
 
         PDFDiff.main(new String[]{pathFile1, pathFile2, pathOut + "/" + name, dumpArg, graphicalArg});
+
+    }
+
+    @FXML
+    public void launchReadme() {
 
     }
 

@@ -18,6 +18,7 @@ public class PDFDiffFX extends Application {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/pdfDiffFX.fxml"));
             Parent root = loader.load();
             Controller controller = loader.getController();
+
             // set this button to open a dialog to choose output directory
             controller.btnOutDir.setOnAction( e -> {
                 DirectoryChooser chooser = new DirectoryChooser();
@@ -31,6 +32,11 @@ public class PDFDiffFX extends Application {
                 try {
                     controller.textOutDir.setText(chooser.showDialog(primaryStage).getAbsolutePath());
                 } catch (NullPointerException ignored) {} // null returned when "Cancel" clicked
+            });
+
+            // readme launch button
+            controller.readmeBtnLaunch.setOnAction( e -> {
+                ReadmeWindow.display();
             });
 
             primaryStage.setTitle("PDFDiff");

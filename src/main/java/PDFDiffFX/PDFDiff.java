@@ -66,8 +66,8 @@ public class PDFDiff {
     // TODO: add a Readme that explains the different reports and how to interpret them.
     //      include pictures of example reports
     //      add a button/toolbar item to the GUI to launch this Readme
-    // TODO: figure out how to close the documents without breaking functionality
     // TODO: solve summary window sizing issue
+    // TODO: warn before overwriting files/folder
     public static void main(String[] args) {
         PDFDiff engine = new PDFDiff();
 
@@ -92,6 +92,13 @@ public class PDFDiff {
                     // compare page-by-page
                     List<PDDocument> file1Pages = reportTool.pdfToPages(doc1);
                     List<PDDocument> file2Pages = reportTool.pdfToPages(doc2);
+
+                    for (PDDocument page : file1Pages) {
+                        page.getPage(0).setRotation(0);
+                    }
+                    for (PDDocument page : file2Pages) {
+                        page.getPage(0).setRotation(0);
+                    }
 
                     // compare graphically
                     List<Integer> graphicalDiffPageNums = null;
