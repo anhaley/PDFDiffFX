@@ -25,6 +25,7 @@ public class AlertBox {
         layout.setAlignment(Pos.CENTER);
         layout.setMinHeight(25 * msg.split("\n").length);
 
+        // TODO: change text to multi-line Label, like in ReadmeWindow
         Scene scene = new Scene(layout);
         window.setScene(scene);
         text.wrappingWidthProperty().bind(scene.widthProperty().subtract(20));
